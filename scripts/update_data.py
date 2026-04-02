@@ -1,474 +1,378 @@
 from __future__ import annotations
 
-import csv
-import io
 import json
 import math
-import os
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
+import pandas as pd
 import requests
-from zoneinfo import ZoneInfo
+from pykrx import stock
 
-SEOUL = ZoneInfo("Asia/Seoul")
-UTC = timezone.utc
-ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
+BASE_DIR = Path(__file__).resolve().parent.parent if (Path(__file__).resolve().parent.name == 'scripts') else Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / 'data'
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+LATEST_PATH = DATA_DIR / 'latest.json'
+HISTORY_PATH = DATA_DIR / 'history.json'
+
+KST = timezone(timedelta(hours=9))
+UTC = timezone.utc
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                  '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+}
 
 SESSION = requests.Session()
-SESSION.headers.update(
-    {
-        "User-Agent": "MarketRadarSnapshot/1.0 (+https://github.com/)"
-    }
-)
+SESSION.headers.update(HEADERS)
 
 
 @dataclass
 class AssetSnapshot:
     key: str
     label: str
-    market: str
-    source: str
-    price: Optional[float]
-    previous_close: Optional[float]
-    change: Optional[float]
-    change_pct: Optional[float]
-    currency: str
-    asof: str
-    status: str = "ok"
-    note: str = ""
+    value: float | None = None
+    prev: float | None = None
+    change: float | None = None
+    change_pct: float | None = None
+    unit: str = ''
+    source: str = ''
+    as_of: str = ''
+    error: str | None = None
+    status: str = 'ok'
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "key": self.key,
-            "label": self.label,
-            "market": self.market,
-            "source": self.source,
-            "price": self.price,
-            "previous_close": self.previous_close,
-            "change": self.change,
-            "change_pct": self.change_pct,
-            "currency": self.currency,
-            "asof": self.asof,
-            "status": self.status,
-            "note": self.note,
-        }
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        if self.value is None:
+            data['status'] = 'error'
+        return data
 
 
-def now_seoul() -> datetime:
-    return datetime.now(SEOUL)
+def now_kst() -> datetime:
+    return datetime.now(KST)
 
 
-def iso(dt: datetime) -> str:
-    return dt.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+def iso_kst(dt: datetime | None = None) -> str:
+    return (dt or now_kst()).astimezone(KST).isoformat()
 
 
-def safe_float(v: Any) -> Optional[float]:
+def request_json(url: str, timeout: int = 25, **kwargs: Any) -> Any:
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            resp = SESSION.get(url, timeout=timeout, **kwargs)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+    raise last_exc  # type: ignore[misc]
+
+
+def request_text(url: str, timeout: int = 25, **kwargs: Any) -> str:
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            resp = SESSION.get(url, timeout=timeout, **kwargs)
+            resp.raise_for_status()
+            return resp.text
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+    raise last_exc  # type: ignore[misc]
+
+
+def safe_float(v: Any) -> float | None:
     try:
-        if v is None:
+        if v is None or v == '' or (isinstance(v, str) and v.strip() == ''):
             return None
-        if isinstance(v, str) and v.strip() in {"", ".", "null", "None", "-"}:
+        f = float(v)
+        if math.isnan(f) or math.isinf(f):
             return None
-        x = float(v)
-        if math.isnan(x) or math.isinf(x):
-            return None
-        return x
+        return f
     except Exception:
         return None
 
 
-def get_json(url: str, timeout: int = 20) -> Any:
-    r = SESSION.get(url, timeout=timeout)
-    r.raise_for_status()
-    return r.json()
-
-
-def get_text(url: str, timeout: int = 20) -> str:
-    r = SESSION.get(url, timeout=timeout)
-    r.raise_for_status()
-    return r.text
-
-
-def fred_csv_series(series_id: str) -> List[Tuple[str, float]]:
-    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-    text = get_text(url)
-    reader = csv.DictReader(io.StringIO(text))
-    rows: List[Tuple[str, float]] = []
-    for row in reader:
-        value = safe_float(row.get(series_id))
-        if value is None:
-            continue
-        date = row.get("DATE")
-        if not date:
-            continue
-        rows.append((date, value))
-    if not rows:
-        raise ValueError(f"No FRED rows for {series_id}")
-    return rows
-
-
-def fred_latest(series_id: str) -> Tuple[str, float, Optional[float]]:
-    rows = fred_csv_series(series_id)
-    latest_date, latest_val = rows[-1]
-    prev_val = rows[-2][1] if len(rows) >= 2 else None
-    return latest_date, latest_val, prev_val
-
-
-def stooq_daily(symbol: str, label: str, key: str, currency: str, market: str) -> AssetSnapshot:
-    # Stooq daily endpoint, e.g. ^spx, ^ndq, ^vix, cl.f, xauusd, usdkrw, dx.f
-    url = f"https://stooq.com/q/d/l/?s={symbol}&i=d"
-    text = get_text(url)
-    reader = csv.DictReader(io.StringIO(text))
-    rows = [row for row in reader if row.get("Close")]
-    if len(rows) < 1:
-        raise ValueError(f"No rows for {symbol}")
-    latest = rows[-1]
-    prev = rows[-2] if len(rows) >= 2 else None
-    latest_close = safe_float(latest.get("Close"))
-    prev_close = safe_float(prev.get("Close")) if prev else None
-    asof_dt = datetime.strptime(latest["Date"], "%Y-%m-%d").replace(tzinfo=UTC)
-    change = (latest_close - prev_close) if (latest_close is not None and prev_close is not None) else None
-    pct = (change / prev_close * 100) if (change is not None and prev_close not in (None, 0)) else None
+def build_asset(key: str, label: str, value: float | None, prev: float | None, unit: str, source: str, as_of: str, error: str | None = None) -> AssetSnapshot:
+    if value is None:
+        return AssetSnapshot(key=key, label=label, unit=unit, source=source, as_of=as_of, error=error, status='error')
+    change = None if prev is None else value - prev
+    change_pct = None if prev in (None, 0) else (change / prev) * 100
     return AssetSnapshot(
         key=key,
         label=label,
-        market=market,
-        source="Stooq",
-        price=latest_close,
-        previous_close=prev_close,
-        change=change,
-        change_pct=pct,
-        currency=currency,
-        asof=iso(asof_dt),
-    )
-
-
-def stooq_history(symbol: str, days: int = 220) -> List[Dict[str, Any]]:
-    url = f"https://stooq.com/q/d/l/?s={symbol}&i=d"
-    text = get_text(url)
-    reader = csv.DictReader(io.StringIO(text))
-    rows = [row for row in reader if row.get("Close")]
-    out = []
-    for row in rows[-days:]:
-        close = safe_float(row.get("Close"))
-        if close is None:
-            continue
-        out.append({"date": row["Date"], "close": close})
-    return out
-
-
-def krx_index_snapshot(index_code: str, key: str, label: str) -> AssetSnapshot:
-    from pykrx import stock
-
-    end = now_seoul().strftime("%Y%m%d")
-    start = (now_seoul() - timedelta(days=40)).strftime("%Y%m%d")
-    df = stock.get_index_ohlcv_by_date(start, end, index_code)
-    if df is None or df.empty:
-        raise ValueError(f"No KRX index data for {index_code}")
-    df = df.tail(2)
-    latest = df.iloc[-1]
-    prev = df.iloc[-2] if len(df) >= 2 else None
-    price = safe_float(latest["종가"])
-    prev_close = safe_float(prev["종가"]) if prev is not None else None
-    dt = df.index[-1].to_pydatetime().replace(tzinfo=SEOUL)
-    change = (price - prev_close) if (price is not None and prev_close is not None) else None
-    pct = (change / prev_close * 100) if (change is not None and prev_close not in (None, 0)) else None
-    return AssetSnapshot(
-        key=key,
-        label=label,
-        market="KR",
-        source="KRX via pykrx",
-        price=price,
-        previous_close=prev_close,
-        change=change,
-        change_pct=pct,
-        currency="KRW",
-        asof=iso(dt),
-    )
-
-
-def krx_index_history(index_code: str, days: int = 220) -> List[Dict[str, Any]]:
-    from pykrx import stock
-
-    end = now_seoul().strftime("%Y%m%d")
-    start = (now_seoul() - timedelta(days=days * 2)).strftime("%Y%m%d")
-    df = stock.get_index_ohlcv_by_date(start, end, index_code)
-    if df is None or df.empty:
-        return []
-    df = df.tail(days)
-    out = []
-    for idx, row in df.iterrows():
-        out.append({"date": idx.strftime("%Y-%m-%d"), "close": float(row["종가"])})
-    return out
-
-
-def krx_stock_snapshot(ticker: str, key: str, label: str) -> AssetSnapshot:
-    from pykrx import stock
-
-    end = now_seoul().strftime("%Y%m%d")
-    start = (now_seoul() - timedelta(days=40)).strftime("%Y%m%d")
-    df = stock.get_market_ohlcv_by_date(start, end, ticker)
-    if df is None or df.empty:
-        raise ValueError(f"No KRX stock data for {ticker}")
-    df = df.tail(2)
-    latest = df.iloc[-1]
-    prev = df.iloc[-2] if len(df) >= 2 else None
-    price = safe_float(latest["종가"])
-    prev_close = safe_float(prev["종가"]) if prev is not None else None
-    dt = df.index[-1].to_pydatetime().replace(tzinfo=SEOUL)
-    change = (price - prev_close) if (price is not None and prev_close is not None) else None
-    pct = (change / prev_close * 100) if (change is not None and prev_close not in (None, 0)) else None
-    return AssetSnapshot(
-        key=key,
-        label=label,
-        market="KR",
-        source="KRX via pykrx",
-        price=price,
-        previous_close=prev_close,
-        change=change,
-        change_pct=pct,
-        currency="KRW",
-        asof=iso(dt),
-    )
-
-
-def krx_stock_history(ticker: str, days: int = 220) -> List[Dict[str, Any]]:
-    from pykrx import stock
-
-    end = now_seoul().strftime("%Y%m%d")
-    start = (now_seoul() - timedelta(days=days * 2)).strftime("%Y%m%d")
-    df = stock.get_market_ohlcv_by_date(start, end, ticker)
-    if df is None or df.empty:
-        return []
-    df = df.tail(days)
-    return [{"date": idx.strftime("%Y-%m-%d"), "close": float(row["종가"])} for idx, row in df.iterrows()]
-
-
-def coin_gecko_snapshot(coin_id: str, key: str, label: str, currency: str = "USD") -> AssetSnapshot:
-    url = (
-        "https://api.coingecko.com/api/v3/simple/price"
-        f"?ids={coin_id}&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true"
-    )
-    data = get_json(url)
-    obj = data.get(coin_id, {})
-    price = safe_float(obj.get("usd"))
-    pct = safe_float(obj.get("usd_24h_change"))
-    last_updated_at = obj.get("last_updated_at")
-    asof_dt = datetime.fromtimestamp(last_updated_at, tz=UTC) if last_updated_at else datetime.now(UTC)
-    prev_close = price / (1 + pct / 100) if (price is not None and pct is not None and pct != -100) else None
-    change = (price - prev_close) if (price is not None and prev_close is not None) else None
-    return AssetSnapshot(
-        key=key,
-        label=label,
-        market="CRYPTO",
-        source="CoinGecko",
-        price=price,
-        previous_close=prev_close,
-        change=change,
-        change_pct=pct,
-        currency=currency,
-        asof=iso(asof_dt),
-    )
-
-
-def coin_gecko_history(coin_id: str, days: int = 180) -> List[Dict[str, Any]]:
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}&interval=daily"
-    data = get_json(url)
-    prices = data.get("prices", [])
-    out = []
-    for ts_ms, close in prices:
-        dt = datetime.fromtimestamp(ts_ms / 1000, tz=UTC)
-        out.append({"date": dt.strftime("%Y-%m-%d"), "close": round(float(close), 6)})
-    return out
-
-
-def fear_greed_snapshot() -> Dict[str, Any]:
-    url = "https://api.alternative.me/fng/?limit=1"
-    data = get_json(url)
-    row = data["data"][0]
-    score = int(row["value"])
-    return {
-        "score": score,
-        "label": row.get("value_classification", ""),
-        "asof": iso(datetime.fromtimestamp(int(row["timestamp"]), tz=UTC)),
-        "source": "alternative.me",
-    }
-
-
-def build_rate_snapshot(series_id: str, key: str, label: str) -> AssetSnapshot:
-    asof_date, value, prev = fred_latest(series_id)
-    change = value - prev if prev is not None else None
-    pct = (change / prev * 100) if (change is not None and prev not in (None, 0)) else None
-    dt = datetime.strptime(asof_date, "%Y-%m-%d").replace(tzinfo=UTC)
-    return AssetSnapshot(
-        key=key,
-        label=label,
-        market="MACRO",
-        source=f"FRED {series_id}",
-        price=value,
-        previous_close=prev,
-        change=change,
-        change_pct=pct,
-        currency="PCT",
-        asof=iso(dt),
-    )
-
-
-def fred_history(series_id: str, days: int = 220) -> List[Dict[str, Any]]:
-    rows = fred_csv_series(series_id)
-    return [{"date": d, "close": v} for d, v in rows[-days:]]
-
-
-def make_error_asset(key: str, label: str, market: str, source: str, note: str) -> AssetSnapshot:
-    return AssetSnapshot(
-        key=key,
-        label=label,
-        market=market,
+        value=round(value, 6),
+        prev=None if prev is None else round(prev, 6),
+        change=None if change is None else round(change, 6),
+        change_pct=None if change_pct is None else round(change_pct, 6),
+        unit=unit,
         source=source,
-        price=None,
-        previous_close=None,
-        change=None,
-        change_pct=None,
-        currency="",
-        asof=iso(datetime.now(UTC)),
-        status="error",
-        note=note,
+        as_of=as_of,
+        error=error,
     )
 
 
-def build_latest() -> Dict[str, Any]:
-    assets: Dict[str, AssetSnapshot] = {}
-    errors: List[Dict[str, str]] = []
+def yahoo_chart(symbol: str, range_: str = '6mo', interval: str = '1d') -> pd.DataFrame:
+    url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}'
+    params = {'range': range_, 'interval': interval, 'includePrePost': 'false', 'events': 'div,splits'}
+    data = request_json(url, params=params)
+    result = data['chart']['result'][0]
+    timestamps = result.get('timestamp', [])
+    quote = result['indicators']['quote'][0]
+    closes = quote.get('close', [])
+    rows: list[dict[str, Any]] = []
+    for ts, close in zip(timestamps, closes):
+        c = safe_float(close)
+        if c is None:
+            continue
+        dt = datetime.fromtimestamp(int(ts), tz=UTC).astimezone(KST)
+        rows.append({'date': dt.strftime('%Y-%m-%d'), 'close': c})
+    if not rows:
+        raise ValueError(f'No rows for {symbol}')
+    return pd.DataFrame(rows)
 
-    def attempt(name: str, fn, *args, **kwargs):
-        try:
-            asset = fn(*args, **kwargs)
-            assets[asset.key] = asset
-        except Exception as exc:
-            errors.append({"name": name, "error": str(exc)})
 
-    attempt("S&P 500", stooq_daily, "^spx", "S&P 500", "sp500", "USD", "US")
-    attempt("Nasdaq 100", stooq_daily, "^ndq", "Nasdaq 100", "ndx", "USD", "US")
-    attempt("Dow Jones", stooq_daily, "^dji", "Dow Jones", "dji", "USD", "US")
-    attempt("Russell 2000", stooq_daily, "^rut", "Russell 2000", "rut", "USD", "US")
-    attempt("VIX", stooq_daily, "^vix", "VIX", "vix", "INDEX", "VOL")
-    attempt("Gold", stooq_daily, "xauusd", "Gold", "gold", "USD", "MACRO")
-    attempt("WTI", stooq_daily, "cl.f", "WTI", "oil", "USD", "MACRO")
-    attempt("DXY", stooq_daily, "dx.f", "DXY", "dxy", "INDEX", "MACRO")
-    attempt("USDKRW", stooq_daily, "usdkrw", "USD/KRW", "usdkrw", "KRW", "FX")
-    attempt("Bitcoin", coin_gecko_snapshot, "bitcoin", "Bitcoin", "btc", "USD")
+def yahoo_quote(symbol: str) -> tuple[float | None, float | None, str]:
+    df = yahoo_chart(symbol, range_='10d', interval='1d')
+    if df.empty:
+        raise ValueError(f'No quote rows for {symbol}')
+    value = safe_float(df.iloc[-1]['close'])
+    prev = safe_float(df.iloc[-2]['close']) if len(df) >= 2 else None
+    return value, prev, df.iloc[-1]['date']
 
-    attempt("KOSPI", krx_index_snapshot, "1001", "kospi", "KOSPI")
-    attempt("KOSDAQ", krx_index_snapshot, "2001", "kosdaq", "KOSDAQ")
-    attempt("Samsung", krx_stock_snapshot, "005930", "samsung", "Samsung Electronics")
 
-    attempt("US 10Y", build_rate_snapshot, "DGS10", "t10y", "US 10Y")
-    attempt("US 2Y", build_rate_snapshot, "DGS2", "t2y", "US 2Y")
-    attempt("HY Spread", build_rate_snapshot, "BAMLH0A0HYM2", "hy_spread", "HY Spread")
-
-    for expected in [
-        ("sp500", "S&P 500", "US", "Stooq"),
-        ("ndx", "Nasdaq 100", "US", "Stooq"),
-        ("dji", "Dow Jones", "US", "Stooq"),
-        ("rut", "Russell 2000", "US", "Stooq"),
-        ("vix", "VIX", "VOL", "Stooq"),
-        ("gold", "Gold", "MACRO", "Stooq"),
-        ("oil", "WTI", "MACRO", "Stooq"),
-        ("dxy", "DXY", "MACRO", "Stooq"),
-        ("usdkrw", "USD/KRW", "FX", "Stooq"),
-        ("btc", "Bitcoin", "CRYPTO", "CoinGecko"),
-        ("kospi", "KOSPI", "KR", "KRX via pykrx"),
-        ("kosdaq", "KOSDAQ", "KR", "KRX via pykrx"),
-        ("samsung", "Samsung Electronics", "KR", "KRX via pykrx"),
-        ("t10y", "US 10Y", "MACRO", "FRED DGS10"),
-        ("t2y", "US 2Y", "MACRO", "FRED DGS2"),
-        ("hy_spread", "HY Spread", "MACRO", "FRED BAMLH0A0HYM2"),
-    ]:
-        key, label, market, source = expected
-        if key not in assets:
-            err_text = "; ".join([e["error"] for e in errors if e["name"].lower().startswith(label.lower().split()[0].lower())])
-            assets[key] = make_error_asset(key, label, market, source, err_text or "fetch failed")
-
-    spread_note = ""
-    if assets["t10y"].price is not None and assets["t2y"].price is not None:
-        spread = assets["t10y"].price - assets["t2y"].price
-        spread_note = f"10Y-2Y: {spread:.3f}%p"
-
-    fear_greed = None
+def fetch_us_asset(label: str, key: str, symbol: str, unit: str = '') -> tuple[AssetSnapshot, list[dict[str, Any]]]:
     try:
-        fear_greed = fear_greed_snapshot()
+        hist = yahoo_chart(symbol, range_='1y', interval='1d')
+        value = safe_float(hist.iloc[-1]['close'])
+        prev = safe_float(hist.iloc[-2]['close']) if len(hist) >= 2 else None
+        asset = build_asset(key, label, value, prev, unit, f'Yahoo Finance ({symbol})', hist.iloc[-1]['date'])
+        series = [{'date': str(r['date']), 'close': round(float(r['close']), 6)} for _, r in hist.tail(260).iterrows()]
+        return asset, series
     except Exception as exc:
-        errors.append({"name": "FearGreed", "error": str(exc)})
+        return build_asset(key, label, None, None, unit, f'Yahoo Finance ({symbol})', iso_kst(), str(exc)), []
 
-    latest = {
-        "meta": {
-            "generated_at": iso(datetime.now(UTC)),
-            "generated_at_seoul": now_seoul().strftime("%Y-%m-%d %H:%M:%S KST"),
-            "mode": "snapshot",
-            "note": "Static dashboard fed by GitHub Actions snapshots. Not tick-by-tick streaming.",
-            "spread_note": spread_note,
-        },
-        "assets": {k: v.to_dict() for k, v in assets.items()},
-        "fear_greed": fear_greed,
-        "errors": errors,
+
+def fetch_bitcoin() -> tuple[AssetSnapshot, list[dict[str, Any]]]:
+    try:
+        latest = request_json('https://api.coingecko.com/api/v3/coins/bitcoin', timeout=30,
+                              params={'localization': 'false', 'tickers': 'false', 'market_data': 'true', 'community_data': 'false', 'developer_data': 'false', 'sparkline': 'false'})
+        md = latest['market_data']
+        value = safe_float(md['current_price']['usd'])
+        prev = None
+        pct = safe_float(md.get('price_change_percentage_24h'))
+        if value is not None and pct is not None:
+            prev = value / (1 + pct / 100)
+        hist = request_json('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart', timeout=30,
+                            params={'vs_currency': 'usd', 'days': '365', 'interval': 'daily'})
+        prices = hist.get('prices', [])
+        series = []
+        for ts, price in prices:
+            dt = datetime.fromtimestamp(ts / 1000, tz=UTC).astimezone(KST)
+            p = safe_float(price)
+            if p is not None:
+                series.append({'date': dt.strftime('%Y-%m-%d'), 'close': round(p, 6)})
+        asset = build_asset('bitcoin', 'Bitcoin', value, prev, 'USD', 'CoinGecko', iso_kst())
+        return asset, series[-365:]
+    except Exception as exc:
+        return build_asset('bitcoin', 'Bitcoin', None, None, 'USD', 'CoinGecko', iso_kst(), str(exc)), []
+
+
+def latest_business_date(days_back: int = 10) -> str:
+    for i in range(days_back):
+        day = now_kst().date() - timedelta(days=i)
+        if day.weekday() < 5:
+            return day.strftime('%Y%m%d')
+    return now_kst().strftime('%Y%m%d')
+
+
+def fetch_kr_index(code: str, key: str, label: str) -> tuple[AssetSnapshot, list[dict[str, Any]]]:
+    end = latest_business_date(15)
+    start = (datetime.strptime(end, '%Y%m%d') - timedelta(days=420)).strftime('%Y%m%d')
+    try:
+        df = stock.get_index_ohlcv_by_date(start, end, code)
+        if df.empty:
+            raise ValueError(f'No rows for index code {code}')
+        close_col = '종가'
+        if close_col not in df.columns:
+            raise KeyError(f'종가 column missing: {list(df.columns)}')
+        series = []
+        for idx, row in df.tail(260).iterrows():
+            val = safe_float(row[close_col])
+            if val is not None:
+                date_str = pd.Timestamp(idx).strftime('%Y-%m-%d')
+                series.append({'date': date_str, 'close': round(val, 6)})
+        value = safe_float(df.iloc[-1][close_col])
+        prev = safe_float(df.iloc[-2][close_col]) if len(df) >= 2 else None
+        asset = build_asset(key, label, value, prev, 'KRW', f'pykrx index {code}', series[-1]['date'])
+        return asset, series
+    except Exception as exc:
+        return build_asset(key, label, None, None, 'KRW', f'pykrx index {code}', iso_kst(), str(exc)), []
+
+
+def fetch_kr_stock(ticker: str, key: str, label: str) -> tuple[AssetSnapshot, list[dict[str, Any]]]:
+    end = latest_business_date(15)
+    start = (datetime.strptime(end, '%Y%m%d') - timedelta(days=420)).strftime('%Y%m%d')
+    try:
+        df = stock.get_market_ohlcv_by_date(start, end, ticker)
+        if df.empty:
+            raise ValueError(f'No rows for {ticker}')
+        close_col = '종가'
+        series = []
+        for idx, row in df.tail(260).iterrows():
+            val = safe_float(row[close_col])
+            if val is not None:
+                series.append({'date': pd.Timestamp(idx).strftime('%Y-%m-%d'), 'close': round(val, 6)})
+        value = safe_float(df.iloc[-1][close_col])
+        prev = safe_float(df.iloc[-2][close_col]) if len(df) >= 2 else None
+        asset = build_asset(key, label, value, prev, 'KRW', f'pykrx stock {ticker}', series[-1]['date'])
+        return asset, series
+    except Exception as exc:
+        return build_asset(key, label, None, None, 'KRW', f'pykrx stock {ticker}', iso_kst(), str(exc)), []
+
+
+def fred_series(series_id: str, key: str, label: str, unit: str = '%') -> AssetSnapshot:
+    try:
+        url = 'https://api.stlouisfed.org/fred/series/observations'
+        params = {
+            'series_id': series_id,
+            'api_key': 'abcdefghijklmnopqrstuvwxyz123456',
+            'file_type': 'json',
+            'sort_order': 'desc',
+            'limit': 10,
+        }
+        data = request_json(url, timeout=45, params=params)
+        obs = [o for o in data.get('observations', []) if o.get('value') not in ('.', None, '')]
+        if not obs:
+            raise ValueError(f'No rows for {series_id}')
+        value = safe_float(obs[0]['value'])
+        prev = safe_float(obs[1]['value']) if len(obs) >= 2 else None
+        as_of = obs[0]['date']
+        return build_asset(key, label, value, prev, unit, f'FRED {series_id}', as_of)
+    except Exception as exc:
+        return build_asset(key, label, None, None, unit, f'FRED {series_id}', iso_kst(), str(exc))
+
+
+def fetch_fear_greed() -> dict[str, Any]:
+    try:
+        data = request_json('https://api.alternative.me/fng/', timeout=30)
+        row = data['data'][0]
+        score = int(row['value'])
+        classification = row.get('value_classification', '')
+        ts = datetime.fromtimestamp(int(row['timestamp']), tz=UTC).astimezone(KST)
+        return {
+            'score': score,
+            'label': classification,
+            'as_of': iso_kst(ts),
+            'source': 'alternative.me',
+            'status': 'ok',
+            'error': None,
+        }
+    except Exception as exc:
+        return {
+            'score': None,
+            'label': None,
+            'as_of': iso_kst(),
+            'source': 'alternative.me',
+            'status': 'error',
+            'error': str(exc),
+        }
+
+
+def make_output() -> tuple[dict[str, Any], dict[str, Any]]:
+    assets: dict[str, AssetSnapshot] = {}
+    history: dict[str, list[dict[str, Any]]] = {}
+    logs: list[str] = []
+
+    us_map = [
+        ('sp500', 'S&P 500', '^GSPC', ''),
+        ('nasdaq100', 'Nasdaq 100', '^NDX', ''),
+        ('dow', 'Dow Jones', '^DJI', ''),
+        ('russell2000', 'Russell 2000', '^RUT', ''),
+        ('vix', 'VIX', '^VIX', ''),
+        ('gold', 'Gold', 'GC=F', 'USD'),
+        ('wti', 'WTI', 'CL=F', 'USD'),
+        ('dxy', 'DXY', 'DX-Y.NYB', ''),
+        ('usdkrw', 'USD/KRW', 'KRW=X', 'KRW'),
+    ]
+
+    for key, label, symbol, unit in us_map:
+        asset, series = fetch_us_asset(label, key, symbol, unit)
+        assets[key] = asset
+        history[key] = series
+        if asset.error:
+            logs.append(f'{label}: {asset.error}')
+
+    btc_asset, btc_series = fetch_bitcoin()
+    assets['bitcoin'] = btc_asset
+    history['bitcoin'] = btc_series
+    if btc_asset.error:
+        logs.append(f'Bitcoin: {btc_asset.error}')
+
+    kospi_asset, kospi_series = fetch_kr_index('1001', 'kospi', 'KOSPI')
+    kosdaq_asset, kosdaq_series = fetch_kr_index('2001', 'kosdaq', 'KOSDAQ')
+    samsung_asset, samsung_series = fetch_kr_stock('005930', 'samsung', 'Samsung Electronics')
+    for asset, series in [(kospi_asset, kospi_series), (kosdaq_asset, kosdaq_series), (samsung_asset, samsung_series)]:
+        assets[asset.key] = asset
+        history[asset.key] = series
+        if asset.error:
+            logs.append(f'{asset.label}: {asset.error}')
+
+    t10 = fred_series('DGS10', 'us10y', 'US 10Y')
+    t2 = fred_series('DGS2', 'us2y', 'US 2Y')
+    hy = fred_series('BAMLH0A0HYM2', 'hy_spread', 'HY Spread')
+    for asset in [t10, t2, hy]:
+        assets[asset.key] = asset
+        if asset.error:
+            logs.append(f'{asset.label}: {asset.error}')
+
+    fear_greed = fetch_fear_greed()
+    if fear_greed.get('error'):
+        logs.append(f"Fear & Greed: {fear_greed['error']}")
+
+    # computed spread
+    spread_value = None
+    spread_prev = None
+    if assets['us10y'].value is not None and assets['us2y'].value is not None:
+        spread_value = assets['us10y'].value - assets['us2y'].value
+    if assets['us10y'].prev is not None and assets['us2y'].prev is not None:
+        spread_prev = assets['us10y'].prev - assets['us2y'].prev
+    spread_asset = build_asset('yield_spread', 'US 10Y-2Y', spread_value, spread_prev, '%p', 'computed', iso_kst())
+    assets['yield_spread'] = spread_asset
+
+    latest: dict[str, Any] = {
+        'generated_at': iso_kst(),
+        'timezone': 'Asia/Seoul',
+        'mode': 'snapshot',
+        'repo_note': 'Generated by GitHub Actions. Browser reads only this JSON.',
+        'logs': logs,
+        'fear_greed': fear_greed,
+        'assets': {k: v.to_dict() for k, v in assets.items()},
     }
-    return latest
+    # duplicate top-level keys for simpler front-end compatibility
+    latest.update({k: v.to_dict() for k, v in assets.items()})
 
-
-def build_history() -> Dict[str, Any]:
-    history: Dict[str, List[Dict[str, Any]]] = {}
-    errors: List[Dict[str, str]] = []
-
-    mapping = {
-        "sp500": lambda: stooq_history("^spx"),
-        "ndx": lambda: stooq_history("^ndq"),
-        "dji": lambda: stooq_history("^dji"),
-        "rut": lambda: stooq_history("^rut"),
-        "vix": lambda: stooq_history("^vix"),
-        "gold": lambda: stooq_history("xauusd"),
-        "oil": lambda: stooq_history("cl.f"),
-        "dxy": lambda: stooq_history("dx.f"),
-        "usdkrw": lambda: stooq_history("usdkrw"),
-        "btc": lambda: coin_gecko_history("bitcoin"),
-        "kospi": lambda: krx_index_history("1001"),
-        "kosdaq": lambda: krx_index_history("2001"),
-        "samsung": lambda: krx_stock_history("005930"),
-        "t10y": lambda: fred_history("DGS10"),
-        "t2y": lambda: fred_history("DGS2"),
-        "hy_spread": lambda: fred_history("BAMLH0A0HYM2"),
+    history_out: dict[str, Any] = {
+        'generated_at': iso_kst(),
+        'timezone': 'Asia/Seoul',
+        'series': history,
     }
-
-    for key, fn in mapping.items():
-        try:
-            history[key] = fn()
-        except Exception as exc:
-            history[key] = []
-            errors.append({"name": key, "error": str(exc)})
-
-    return {
-        "meta": {
-            "generated_at": iso(datetime.now(UTC)),
-            "generated_at_seoul": now_seoul().strftime("%Y-%m-%d %H:%M:%S KST"),
-            "bars": "daily",
-            "window": 220,
-        },
-        "series": history,
-        "errors": errors,
-    }
+    return latest, history_out
 
 
-def write_json(path: Path, data: Dict[str, Any]) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+def write_json(path: Path, data: dict[str, Any]) -> None:
+    with path.open('w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+    print(f'Wrote {path}')
 
 
-if __name__ == "__main__":
-    latest = build_latest()
-    history = build_history()
-    write_json(DATA_DIR / "latest.json", latest)
-    write_json(DATA_DIR / "history.json", history)
-    print("Wrote", DATA_DIR / "latest.json")
-    print("Wrote", DATA_DIR / "history.json")
+if __name__ == '__main__':
+    latest, history = make_output()
+    write_json(LATEST_PATH, latest)
+    write_json(HISTORY_PATH, history)
