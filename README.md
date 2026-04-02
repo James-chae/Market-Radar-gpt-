@@ -8,7 +8,7 @@
 - 숫자와 차트 데이터는 `data/latest.json`, `data/history.json`만 사용
 - GitHub Actions가 주기적으로 데이터를 수집하고 JSON을 갱신
 
-## 폴더 구조
+## 폴더 구조 ##
 
 ```text
 index.html
