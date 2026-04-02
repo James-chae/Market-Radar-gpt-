@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Market Radar · Overview Stable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c10; --bg2:#0d1117; --bg3:#161b22; --text:#e6edf3; --sub:#9fb0c0;
+  --border:rgba(255,255,255,.08); --up:#3fb950; --down:#f85149; --accent:#58a6ff;
+  --warn:#d29922; --card:#0d1117;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans KR",sans-serif}
+header{position:sticky;top:0;z-index:10;background:rgba(8,12,16,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.wrap{max-width:1400px;margin:0 auto;padding:0 18px}
+.top{display:flex;align-items:center;gap:14px;height:58px}
+.logo{font-weight:700;font-size:20px;letter-spacing:.5px}
+.status{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--sub);display:flex;gap:12px;align-items:center}
+button{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;cursor:pointer}
+main{padding:18px}
+h1{font-size:28px;margin:6px 0 4px}
+.desc{font-size:12px;color:var(--sub);font-family:"JetBrains Mono",monospace;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.label{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+.value{font-size:28px;font-weight:700;line-height:1.1}
+.change{margin-top:6px;font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600}
+.sub{margin-top:6px;color:var(--sub);font-size:11px}
+.up{color:var(--up)} .down{color:var(--down)} .neutral{color:var(--sub)}
+.banner{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.banner .card{padding:12px}
+.gauge{height:8px;border-radius:999px;background:linear-gradient(90deg,#f85149 0%, #d29922 35%, #3fb950 70%, #39d3f2 100%);margin:12px 0 6px;position:relative}
+.needle{position:absolute;top:-4px;width:3px;height:16px;background:#fff;border-radius:2px;transform:translateX(-50%)}
+.panel{margin-top:16px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px}
+.panel h2{font-size:14px;margin:0 0 10px}
+.logs{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--sub);white-space:pre-wrap;line-height:1.5}
+.smallgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.mono{font-family:"JetBrains Mono",monospace}
+@media (max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}.banner{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:650px){.grid,.banner,.smallgrid{grid-template-columns:1fr}.value{font-size:24px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <div class="logo">MARKET RADAR</div>
+    <div class="status">
+      <span id="generatedAt">--</span>
+      <button onclick="loadAll(true)">새로고침</button>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <h1>전체 요약</h1>
+  <div class="desc">GitHub Pages는 data/latest.json과 data/history.json만 읽음 · 브라우저 외부 시세 직접 호출 없음</div>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="grid" id="cards"></div>
+
+  <div class="smallgrid">
+    <div class="panel">
+      <h2>공포·탐욕</h2>
+      <div class="value" id="fgScore">--</div>
+      <div class="gauge"><div class="needle" id="fgNeedle" style="left:50%"></div></div>
+      <div class="sub" id="fgLabel">--</div>
+    </div>
+    <div class="panel">
+      <h2>수집 상태</h2>
+      <div class="value mono" id="okCount">--</div>
+      <div class="sub" id="repoNote">--</div>
+    </div>
+    <div class="panel">
+      <h2>주요 소스</h2>
+      <div class="sub">Yahoo 차트 프록시 체인 / Binance / alternative.me / FRED CSV / Naver Finance fallback</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>수집 로그</h2>
+    <div class="logs" id="logs">--</div>
+  </div>
+</main>
+<script>
+const ORDER = ["sp500","nasdaq100","dow","russell2000","kospi","kosdaq","usdkrw","samsung","bitcoin","vix","gold","wti","dxy","us10y","us2y","hy_spread","yield_spread"];
+const BANNER = ["sp500","kospi","usdkrw","bitcoin","vix","fear_greed"];
+function fmt(v, unit=""){
+  if(v===null || v===undefined || Number.isNaN(Number(v))) return "--";
+  const n=Number(v);
+  return n.toLocaleString("ko-KR",{maximumFractionDigits:2,minimumFractionDigits:(Math.abs(n)<10?2:0)}) + (unit && unit!=="%" && unit!=="%p" ? " "+unit : unit==="%"||unit==="%p" ? unit : "");
+}
+function changeClass(v){ if(v===null||v===undefined||Number.isNaN(Number(v))) return "neutral"; return Number(v)>=0 ? "up":"down"; }
+function changeText(a){
+  if(a.change===null || a.change_pct===null || Number.isNaN(Number(a.change)) || Number.isNaN(Number(a.change_pct))) return "--";
+  const sign = Number(a.change)>=0?"+":"";
+  const arrow = Number(a.change)>=0?"▲":"▼";
+  return `${arrow} ${sign}${Number(a.change).toLocaleString("ko-KR",{maximumFractionDigits:2})} (${sign}${Number(a.change_pct).toFixed(2)}%)`;
+}
+function render(data){
+  document.getElementById("generatedAt").textContent = data.generated_at || "--";
+  document.getElementById("repoNote").textContent = data.repo_note || "";
+  const assets = data.assets || {};
+  const ok = Object.values(assets).filter(x=>x && x.status==="ok").length;
+  document.getElementById("okCount").textContent = `${ok}/${Object.keys(assets).length}`;
+  const fg = data.fear_greed || {};
+  document.getElementById("fgScore").textContent = fg.score ?? "--";
+  document.getElementById("fgLabel").textContent = fg.label || fg.error || "--";
+  document.getElementById("fgNeedle").style.left = `${fg.score ?? 50}%`;
+  document.getElementById("logs").textContent = (data.logs||[]).join("\n") || "--";
+
+  const banner = document.getElementById("banner");
+  banner.innerHTML = BANNER.map(k=>{
+    if(k==="fear_greed"){
+      return `<div class="card"><div class="label">Fear & Greed</div><div class="value">${fg.score ?? "--"}</div><div class="sub">${fg.label || "--"}</div></div>`;
+    }
+    const a = assets[k] || {};
+    return `<div class="card"><div class="label">${a.label || k}</div><div class="value">${fmt(a.value,a.unit)}</div><div class="change ${changeClass(a.change)}">${changeText(a)}</div></div>`;
+  }).join("");
+
+  const cards = document.getElementById("cards");
+  cards.innerHTML = ORDER.map(k=>{
+    const a = assets[k] || {};
+    return `<div class="card">
+      <div class="label">${a.label || k}</div>
+      <div class="value">${fmt(a.value,a.unit)}</div>
+      <div class="change ${changeClass(a.change)}">${changeText(a)}</div>
+      <div class="sub">${a.source || ""}</div>
+      <div class="sub">${a.status==="ok" ? (a.as_of || "") : ("오류: " + (a.error || "데이터 없음"))}</div>
+    </div>`;
+  }).join("");
+}
+async function loadAll(force=false){
+  const suffix = force ? `?v=${Date.now()}` : "";
+  const res = await fetch(`data/latest.json${suffix}`, {cache:"no-store"});
+  const data = await res.json();
+  render(data);
+}
+loadAll();
+</script>
+</body>
+</html>
