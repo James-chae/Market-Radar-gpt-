@@ -1,0 +1,23 @@
+{
+  "generated_at": "Run workflow once",
+  "timezone": "Asia/Seoul",
+  "series": {
+    "sp500": [],
+    "nasdaq100": [],
+    "dow": [],
+    "russell2000": [],
+    "vix": [],
+    "gold": [],
+    "wti": [],
+    "dxy": [],
+    "usdkrw": [],
+    "bitcoin": [],
+    "kospi": [],
+    "kosdaq": [],
+    "samsung": [],
+    "us10y": [],
+    "us2y": [],
+    "hy_spread": [],
+    "yield_spread": []
+  }
+}

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Market Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#080c10; --bg2:#0d1117; --bg3:#161b22; --bg4:#1c2330;
+  --text:#e6edf3; --sub:#9fb0c3; --accent:#58a6ff; --green:#3fb950; --red:#f85149;
+  --yellow:#e3a825; --border:rgba(255,255,255,.08); --mono:'JetBrains Mono', monospace;
+  --sans:'Noto Sans KR', sans-serif; --display:'Bebas Neue', sans-serif;
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+body:before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(88,166,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+header{position:sticky;top:0;z-index:10;height:58px;display:flex;align-items:center;padding:0 20px;background:rgba(8,12,16,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.logo{font-family:var(--display);font-size:24px;letter-spacing:2px;color:var(--accent)}
+.logo small{display:block;font-size:11px;color:var(--sub);font-family:var(--mono);letter-spacing:1px;margin-top:-4px}
+.header-right{margin-left:auto;display:flex;gap:12px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--sub)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(63,185,80,.6)}
+nav{display:flex;gap:4px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--border);overflow:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.tab{padding:12px 14px;white-space:nowrap;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;font-size:13px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+main{max-width:1500px;margin:0 auto;padding:18px 20px 56px;position:relative;z-index:1}
+.section{display:none}.section.active{display:block}
+.section-title{font-family:var(--display);font-size:32px;letter-spacing:3px;margin:0 0 6px}.section-desc{margin:0 0 18px;color:var(--sub);font-size:12px;font-family:var(--mono)}
+.grid{display:grid;gap:12px}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;min-height:122px}
+.label{display:flex;gap:8px;align-items:center;font-size:11px;font-weight:700;letter-spacing:.8px;color:#c1ccda;text-transform:uppercase;margin-bottom:10px}
+.label .d{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.value{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1.1;color:#fff}
+.change{margin-top:8px;font-family:var(--mono);font-size:13px;font-weight:600}
+.sub{margin-top:8px;color:var(--sub);font-size:11px}
+.up{color:var(--green)} .down{color:var(--red)} .flat{color:#c8d1da} .warn{color:var(--yellow)}
+.banner{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.banner-item{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.banner-item .k{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.7px}
+.banner-item .v{margin-top:4px;font-family:var(--mono);font-size:15px;font-weight:600}
+.chart-shell{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px}
+.chart-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}
+.chart-title .left{font-size:13px;font-weight:600}.chart-title .right{font-size:11px;color:var(--sub);font-family:var(--mono)}
+.chart-selectors{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.btn{background:var(--bg3);border:1px solid var(--border);color:#c7d0da;padding:7px 12px;border-radius:6px;font-family:var(--mono);font-size:11px;cursor:pointer}
+.btn.active{background:#16314d;border-color:var(--accent);color:#fff}
+.table-shell{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px}
+.table-shell table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+.table-shell th,.table-shell td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.05);text-align:left}
+.table-shell th{color:var(--sub);font-weight:500}
+.logs{max-height:260px;overflow:auto;font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:10px}
+.log{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)} .log:last-child{border-bottom:none}
+.badge{display:inline-block;padding:2px 6px;border-radius:5px;font-size:10px;font-family:var(--mono);border:1px solid var(--border)}
+.badge.ok{color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.08)}
+.badge.error{color:var(--red);border-color:rgba(248,81,73,.35);background:rgba(248,81,73,.08)}
+.badge.partial{color:var(--yellow);border-color:rgba(227,168,37,.35);background:rgba(227,168,37,.08)}
+.notice{background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.18);border-radius:12px;padding:12px 14px;color:#d7e8ff;font-size:12px;line-height:1.7}
+@media (max-width:1200px){.grid-4,.banner{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){header,nav,main{padding-left:12px;padding-right:12px}.grid-4,.grid-3,.grid-2,.banner{grid-template-columns:1fr}.value{font-size:24px}.header-right{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">MARKET RADAR<small>GITHUB PAGES · ACTIONS SNAPSHOT</small></div>
+  <div class="header-right"><span class="dot"></span><span id="generatedAt">loading...</span><span id="snapshotStatus" class="badge partial">loading</span></div>
+</header>
+<nav>
+  <div class="tab active" data-tab="overview">📊 전체 요약</div>
+  <div class="tab" data-tab="us">🇺🇸 미국 시장</div>
+  <div class="tab" data-tab="kr">🇰🇷 한국 시장</div>
+  <div class="tab" data-tab="macro">🌐 매크로</div>
+  <div class="tab" data-tab="charts">📈 차트</div>
+  <div class="tab" data-tab="health">🛠 상태</div>
+</nav>
+<main>
+  <section class="section active" id="sec-overview">
+    <h2 class="section-title">OVERVIEW</h2>
+    <p class="section-desc">브라우저는 외부 시세를 직접 호출하지 않고, 저장소의 JSON 스냅샷만 읽습니다.</p>
+    <div class="banner" id="banner"></div>
+    <div class="grid grid-4" id="overviewCards"></div>
+    <div class="grid grid-2" style="margin-top:12px">
+      <div class="chart-shell"><div class="chart-title"><div class="left">코스피 vs 코스닥</div><div class="right">최근 120거래일</div></div><canvas id="overviewKRChart" height="120"></canvas></div>
+      <div class="chart-shell"><div class="chart-title"><div class="left">S&P500 vs Nasdaq 100</div><div class="right">최근 120거래일</div></div><canvas id="overviewUSChart" height="120"></canvas></div>
+    </div>
+  </section>
+
+  <section class="section" id="sec-us">
+    <h2 class="section-title">US MARKET</h2>
+    <p class="section-desc">미국 주요 지수 · 변동성 · 달러</p>
+    <div class="grid grid-4" id="usCards"></div>
+    <div class="grid grid-2" style="margin-top:12px">
+      <div class="chart-shell"><div class="chart-title"><div class="left">미국 지수</div><div class="right">1년</div></div><canvas id="usIndexChart" height="120"></canvas></div>
+      <div class="chart-shell"><div class="chart-title"><div class="left">VIX / DXY</div><div class="right">1년</div></div><canvas id="usMacroChart" height="120"></canvas></div>
+    </div>
+  </section>
+
+  <section class="section" id="sec-kr">
+    <h2 class="section-title">KOREA MARKET</h2>
+    <p class="section-desc">코스피 · 코스닥 · 삼성전자 · 원달러</p>
+    <div class="grid grid-4" id="krCards"></div>
+    <div class="grid grid-2" style="margin-top:12px">
+      <div class="chart-shell"><div class="chart-title"><div class="left">한국 지수</div><div class="right">1년</div></div><canvas id="krIndexChart" height="120"></canvas></div>
+      <div class="chart-shell"><div class="chart-title"><div class="left">삼성전자 / USDKRW</div><div class="right">1년</div></div><canvas id="krEtcChart" height="120"></canvas></div>
+    </div>
+  </section>
+
+  <section class="section" id="sec-macro">
+    <h2 class="section-title">MACRO</h2>
+    <p class="section-desc">금 · WTI · 금리 · 공포탐욕</p>
+    <div class="grid grid-4" id="macroCards"></div>
+    <div class="grid grid-2" style="margin-top:12px">
+      <div class="chart-shell"><div class="chart-title"><div class="left">금 / WTI / 비트코인</div><div class="right">1년</div></div><canvas id="macroAssetChart" height="120"></canvas></div>
+      <div class="chart-shell"><div class="chart-title"><div class="left">금리 스프레드</div><div class="right">FRED 키가 설정된 경우에만 채워짐</div></div><canvas id="macroRateChart" height="120"></canvas></div>
+    </div>
+    <div class="notice" style="margin-top:12px">FRED는 공식 문서상 API 키가 필요합니다. 이 패키지는 GitHub Secret <code>FRED_API_KEY</code>가 있을 때만 금리 카드를 채웁니다. 없으면 금리 카드만 비워두고 나머지 대시보드는 정상 동작합니다.</div>
+  </section>
+
+  <section class="section" id="sec-charts">
+    <h2 class="section-title">CHARTS</h2>
+    <p class="section-desc">숫자와 같은 JSON 기준으로 그리는 차트</p>
+    <div class="chart-shell">
+      <div class="chart-selectors" id="chartSelectors"></div>
+      <div class="chart-title"><div class="left" id="mainChartTitle">차트</div><div class="right" id="mainChartMeta">1년</div></div>
+      <canvas id="mainChart" height="120"></canvas>
+    </div>
+  </section>
+
+  <section class="section" id="sec-health">
+    <h2 class="section-title">SYSTEM HEALTH</h2>
+    <p class="section-desc">스냅샷 생성 로그와 수집 상태</p>
+    <div class="grid grid-2">
+      <div class="table-shell">
+        <table>
+          <thead><tr><th>항목</th><th>상태</th><th>출처</th><th>시각</th></tr></thead>
+          <tbody id="statusTable"></tbody>
+        </table>
+      </div>
+      <div class="logs" id="logsBox"></div>
+    </div>
+  </section>
+</main>
+<script>
+const tabs = document.querySelectorAll('.tab');
+const sections = document.querySelectorAll('.section');
+tabs.forEach(tab => tab.addEventListener('click', () => {
+  tabs.forEach(t => t.classList.remove('active')); sections.forEach(s => s.classList.remove('active'));
+  tab.classList.add('active'); document.getElementById('sec-' + tab.dataset.tab).classList.add('active');
+}));
+
+const assetOrder = {
+  overview: ['sp500','nasdaq100','kospi','kosdaq','usdkrw','vix','gold','bitcoin'],
+  us: ['sp500','nasdaq100','dow','russell2000','vix','dxy'],
+  kr: ['kospi','kosdaq','samsung','usdkrw'],
+  macro: ['gold','wti','bitcoin','fear_greed','us10y','us2y','yield_spread','hy_spread']
+};
+
+const chartLabels = {
+  sp500:'S&P 500', nasdaq100:'Nasdaq 100', dow:'Dow Jones', russell2000:'Russell 2000', vix:'VIX', dxy:'DXY',
+  gold:'Gold', wti:'WTI', bitcoin:'Bitcoin', kospi:'KOSPI', kosdaq:'KOSDAQ', samsung:'Samsung', usdkrw:'USD/KRW', us10y:'US 10Y', us2y:'US 2Y', hy_spread:'HY Spread', yield_spread:'10Y-2Y'
+};
+
+let latest = null;
+let historyData = null;
+let chartRegistry = {};
+let mainChartInstance = null;
+
+function fmtValue(asset){
+  if (!asset || asset.value === null || asset.value === undefined) return '데이터 없음';
+  const n = Number(asset.value);
+  const unit = asset.unit || '';
+  if (Math.abs(n) >= 1000 && !['KRW','USD','%','%p'].includes(unit)) return n.toLocaleString('en-US', {maximumFractionDigits: 2});
+  const digits = unit === '%' || unit === '%p' ? 2 : (n >= 1000 ? 0 : 2);
+  const v = n.toLocaleString('ko-KR', {maximumFractionDigits: digits, minimumFractionDigits: digits === 0 ? 0 : 2});
+  if (unit === 'USD') return '$' + v;
+  if (unit === 'KRW') return v;
+  if (unit) return v + unit;
+  return v;
+}
+function fmtChange(asset){
+  if (!asset || asset.change_pct === null || asset.change_pct === undefined) return {text:'변화값 없음', cls:'flat'};
+  const c = Number(asset.change || 0), p = Number(asset.change_pct || 0);
+  const arrow = c > 0 ? '▲' : c < 0 ? '▼' : '■';
+  const sign = c > 0 ? '+' : '';
+  return { text: `${arrow} ${sign}${c.toLocaleString('ko-KR', {maximumFractionDigits:2})} (${sign}${p.toFixed(2)}%)`, cls: c > 0 ? 'up' : c < 0 ? 'down' : 'flat' };
+}
+function statusBadge(status){
+  const cls = status === 'ok' ? 'ok' : status === 'partial' ? 'partial' : 'error';
+  return `<span class="badge ${cls}">${status || 'unknown'}</span>`;
+}
+function makeCard(asset, customLabel){
+  const label = customLabel || asset?.label || 'Unknown';
+  const change = fmtChange(asset);
+  return `<div class="card">
+    <div class="label"><span class="d"></span>${label}</div>
+    <div class="value">${fmtValue(asset)}</div>
+    <div class="change ${change.cls}">${change.text}</div>
+    <div class="sub">${asset?.source || ''}</div>
+  </div>`;
+}
+function makeFearGreedCard(fg){
+  const fake = { label:'Fear & Greed', value: fg?.score ?? null, change: null, change_pct: null, unit:'', source: fg?.source || '', status: fg?.status || 'error' };
+  return `<div class="card"><div class="label"><span class="d"></span>Fear & Greed</div><div class="value">${fg?.score ?? '데이터 없음'}</div><div class="change ${fg?.score >= 55 ? 'up' : fg?.score <= 25 ? 'down' : 'warn'}">${fg?.label || 'Unknown'}</div><div class="sub">${fg?.source || ''}</div></div>`;
+}
+
+function renderCards(){
+  const assets = latest.assets || {};
+  document.getElementById('overviewCards').innerHTML = assetOrder.overview.map(k => makeCard(assets[k])).join('');
+  document.getElementById('usCards').innerHTML = assetOrder.us.map(k => makeCard(assets[k])).join('');
+  document.getElementById('krCards').innerHTML = assetOrder.kr.map(k => makeCard(assets[k])).join('');
+  document.getElementById('macroCards').innerHTML = assetOrder.macro.map(k => k === 'fear_greed' ? makeFearGreedCard(latest.fear_greed) : makeCard(assets[k])).join('');
+  const bannerKeys = ['sp500','kospi','usdkrw','bitcoin','vix','fear_greed'];
+  document.getElementById('banner').innerHTML = bannerKeys.map(k => {
+    if (k === 'fear_greed') {
+      return `<div class="banner-item"><div class="k">Fear & Greed</div><div class="v ${latest.fear_greed?.score >= 55 ? 'up' : latest.fear_greed?.score <=25 ? 'down' : 'warn'}">${latest.fear_greed?.score ?? '—'}</div></div>`;
+    }
+    const a = assets[k];
+    const cls = (a?.change || 0) > 0 ? 'up' : (a?.change || 0) < 0 ? 'down' : 'flat';
+    return `<div class="banner-item"><div class="k">${a?.label || k}</div><div class="v ${cls}">${fmtValue(a)}</div></div>`;
+  }).join('');
+}
+
+function buildSeries(keys){
+  const series = historyData.series || {};
+  return keys.map(key => ({key, points: series[key] || []})).filter(s => s.points.length);
+}
+function createLineChart(id, keys){
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const selected = buildSeries(keys);
+  const labels = selected[0]?.points.map(p => p.date) || [];
+  const datasets = selected.map((s, idx) => ({
+    label: chartLabels[s.key] || s.key,
+    data: s.points.map(p => p.close),
+    borderWidth: 2,
+    pointRadius: 0,
+    tension: 0.15,
+    yAxisID: idx > 0 && ['vix','dxy','usdkrw','us10y','us2y','yield_spread','hy_spread'].includes(s.key) ? 'y1' : 'y'
+  }));
+  if (chartRegistry[id]) chartRegistry[id].destroy();
+  chartRegistry[id] = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets},
+    options:{
+      maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{legend:{labels:{color:'#d0d7de'}}},
+      scales:{
+        x:{ticks:{color:'#8b9bad', maxTicksLimit:8}, grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#8b9bad'}, grid:{color:'rgba(255,255,255,.05)'}},
+        y1:{display: datasets.some(d => d.yAxisID === 'y1'), position:'right', ticks:{color:'#8b9bad'}, grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+}
+
+function renderStatus(){
+  const rows = [];
+  Object.values(latest.assets || {}).forEach(a => rows.push(`<tr><td>${a.label}</td><td>${statusBadge(a.status)}</td><td>${a.source || ''}</td><td>${(a.as_of || '').replace('T',' ').slice(0,19)}</td></tr>`));
+  rows.push(`<tr><td>Fear & Greed</td><td>${statusBadge(latest.fear_greed?.status)}</td><td>${latest.fear_greed?.source || ''}</td><td>${(latest.fear_greed?.as_of || '').replace('T',' ').slice(0,19)}</td></tr>`);
+  document.getElementById('statusTable').innerHTML = rows.join('');
+  document.getElementById('logsBox').innerHTML = (latest.logs || []).length ? latest.logs.map(x => `<div class="log">${x}</div>`).join('') : '<div class="log">로그 없음</div>';
+}
+
+function initMainChartSelector(){
+  const order = ['sp500','nasdaq100','dow','russell2000','vix','dxy','gold','wti','bitcoin','kospi','kosdaq','samsung','usdkrw','us10y','us2y','hy_spread'];
+  const box = document.getElementById('chartSelectors');
+  box.innerHTML = order.map((k,i) => `<button class="btn ${i===0?'active':''}" data-key="${k}">${chartLabels[k]}</button>`).join('');
+  box.querySelectorAll('.btn').forEach(btn => btn.addEventListener('click', () => {
+    box.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderMainChart(btn.dataset.key);
+  }));
+}
+function renderMainChart(key){
+  const ctx = document.getElementById('mainChart');
+  const points = (historyData.series || {})[key] || [];
+  document.getElementById('mainChartTitle').textContent = chartLabels[key] || key;
+  const metaAsset = (latest.assets || {})[key];
+  document.getElementById('mainChartMeta').textContent = metaAsset?.source || 'history.json';
+  if (mainChartInstance) mainChartInstance.destroy();
+  mainChartInstance = new Chart(ctx, {
+    type:'line',
+    data:{labels: points.map(p => p.date), datasets:[{label: chartLabels[key] || key, data: points.map(p => p.close), borderWidth:2, pointRadius:0, tension:.15}]},
+    options:{maintainAspectRatio:false, plugins:{legend:{labels:{color:'#d0d7de'}}}, scales:{x:{ticks:{color:'#8b9bad', maxTicksLimit:8}, grid:{color:'rgba(255,255,255,.05)'}}, y:{ticks:{color:'#8b9bad'}, grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+}
+
+async function load(){
+  const bust = '?v=' + Date.now();
+  const [l, h] = await Promise.all([fetch('data/latest.json'+bust), fetch('data/history.json'+bust)]);
+  latest = await l.json(); historyData = await h.json();
+  const total = Object.values(latest.assets || {}).length;
+  const ok = Object.values(latest.assets || {}).filter(x => x.status === 'ok').length;
+  const status = ok === total ? 'ok' : ok > 0 ? 'partial' : 'error';
+  document.getElementById('generatedAt').textContent = (latest.generated_at || '').replace('T',' ').slice(0,19);
+  document.getElementById('snapshotStatus').outerHTML = `<span id="snapshotStatus" class="badge ${status}">${status}</span>`;
+  renderCards(); renderStatus();
+  createLineChart('overviewKRChart', ['kospi','kosdaq']);
+  createLineChart('overviewUSChart', ['sp500','nasdaq100']);
+  createLineChart('usIndexChart', ['sp500','nasdaq100','dow','russell2000']);
+  createLineChart('usMacroChart', ['vix','dxy']);
+  createLineChart('krIndexChart', ['kospi','kosdaq']);
+  createLineChart('krEtcChart', ['samsung','usdkrw']);
+  createLineChart('macroAssetChart', ['gold','wti','bitcoin']);
+  createLineChart('macroRateChart', ['us10y','us2y','yield_spread','hy_spread']);
+  initMainChartSelector(); renderMainChart('sp500');
+}
+load().catch(err => {
+  document.getElementById('generatedAt').textContent = 'failed to load';
+  document.getElementById('snapshotStatus').outerHTML = `<span id="snapshotStatus" class="badge error">error</span>`;
+  document.getElementById('overviewCards').innerHTML = `<div class="card"><div class="label"><span class="d"></span>오류</div><div class="value">JSON 로드 실패</div><div class="sub">${String(err)}</div></div>`;
+});
+</script>
+</body>
+</html>
