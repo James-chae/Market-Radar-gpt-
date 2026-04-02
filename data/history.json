@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "generated_at": "1970-01-01T00:00:00Z",
+    "generated_at_seoul": "워크플로 실행 전",
+    "bars": "daily",
+    "window": 220
+  },
+  "series": {
+    "sp500": [], "ndx": [], "dji": [], "rut": [], "vix": [], "gold": [], "oil": [], "dxy": [], "usdkrw": [], "btc": [], "kospi": [], "kosdaq": [], "samsung": [], "t10y": [], "t2y": [], "hy_spread": []
+  },
+  "errors": [{"name":"bootstrap","error":"Run GitHub Actions once to populate history."}]
+}

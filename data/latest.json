@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "generated_at": "1970-01-01T00:00:00Z",
+    "generated_at_seoul": "워크플로 실행 전",
+    "mode": "snapshot",
+    "note": "Run GitHub Actions once to populate real data.",
+    "spread_note": "워크플로 실행 후 자동 계산"
+  },
+  "assets": {
+    "sp500": {"key":"sp500","label":"S&P 500","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "ndx": {"key":"ndx","label":"Nasdaq 100","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "dji": {"key":"dji","label":"Dow Jones","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "rut": {"key":"rut","label":"Russell 2000","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "vix": {"key":"vix","label":"VIX","market":"VOL","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"INDEX","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "gold": {"key":"gold","label":"Gold","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "oil": {"key":"oil","label":"WTI","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "dxy": {"key":"dxy","label":"DXY","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"INDEX","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "usdkrw": {"key":"usdkrw","label":"USD/KRW","market":"FX","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "btc": {"key":"btc","label":"Bitcoin","market":"CRYPTO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "kospi": {"key":"kospi","label":"KOSPI","market":"KR","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "kosdaq": {"key":"kosdaq","label":"KOSDAQ","market":"KR","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "samsung": {"key":"samsung","label":"Samsung Electronics","market":"KR","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "t10y": {"key":"t10y","label":"US 10Y","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"PCT","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "t2y": {"key":"t2y","label":"US 2Y","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"PCT","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
+    "hy_spread": {"key":"hy_spread","label":"HY Spread","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"PCT","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"}
+  },
+  "fear_greed": null,
+  "errors": [{"name":"bootstrap","error":"Run GitHub Actions once to populate real data."}]
+}
