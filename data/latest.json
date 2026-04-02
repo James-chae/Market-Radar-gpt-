@@ -1,29 +1,313 @@
 {
   "meta": {
-    "generated_at": "1970-01-01T00:00:00Z",
-    "generated_at_seoul": "워크플로 실행 전",
+    "generated_at": "2026-04-02T05:28:22Z",
+    "generated_at_seoul": "2026-04-02 14:28:22 KST",
     "mode": "snapshot",
-    "note": "Run GitHub Actions once to populate real data.",
-    "spread_note": "워크플로 실행 후 자동 계산"
+    "note": "Static dashboard fed by GitHub Actions snapshots. Not tick-by-tick streaming.",
+    "spread_note": ""
   },
   "assets": {
-    "sp500": {"key":"sp500","label":"S&P 500","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "ndx": {"key":"ndx","label":"Nasdaq 100","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "dji": {"key":"dji","label":"Dow Jones","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "rut": {"key":"rut","label":"Russell 2000","market":"US","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "vix": {"key":"vix","label":"VIX","market":"VOL","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"INDEX","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "gold": {"key":"gold","label":"Gold","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "oil": {"key":"oil","label":"WTI","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "dxy": {"key":"dxy","label":"DXY","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"INDEX","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "usdkrw": {"key":"usdkrw","label":"USD/KRW","market":"FX","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "btc": {"key":"btc","label":"Bitcoin","market":"CRYPTO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"USD","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "kospi": {"key":"kospi","label":"KOSPI","market":"KR","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "kosdaq": {"key":"kosdaq","label":"KOSDAQ","market":"KR","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "samsung": {"key":"samsung","label":"Samsung Electronics","market":"KR","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"KRW","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "t10y": {"key":"t10y","label":"US 10Y","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"PCT","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "t2y": {"key":"t2y","label":"US 2Y","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"PCT","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"},
-    "hy_spread": {"key":"hy_spread","label":"HY Spread","market":"MACRO","source":"pending","price":null,"previous_close":null,"change":null,"change_pct":null,"currency":"PCT","asof":"1970-01-01T00:00:00Z","status":"error","note":"Run workflow"}
+    "Bitcoin": {
+      "key": "Bitcoin",
+      "label": "btc",
+      "market": "CRYPTO",
+      "source": "CoinGecko",
+      "price": 66453.0,
+      "previous_close": 68535.47147492848,
+      "change": -2082.471474928476,
+      "change_pct": -3.0385308951880265,
+      "currency": "USD",
+      "asof": "2026-04-02T05:26:04Z",
+      "status": "ok",
+      "note": ""
+    },
+    "samsung": {
+      "key": "samsung",
+      "label": "Samsung Electronics",
+      "market": "KR",
+      "source": "KRX via pykrx",
+      "price": 178100.0,
+      "previous_close": 189600.0,
+      "change": -11500.0,
+      "change_pct": -6.065400843881856,
+      "currency": "KRW",
+      "asof": "2026-04-01T15:00:00Z",
+      "status": "ok",
+      "note": ""
+    },
+    "sp500": {
+      "key": "sp500",
+      "label": "S&P 500",
+      "market": "US",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for ^spx"
+    },
+    "ndx": {
+      "key": "ndx",
+      "label": "Nasdaq 100",
+      "market": "US",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for ^ndq"
+    },
+    "dji": {
+      "key": "dji",
+      "label": "Dow Jones",
+      "market": "US",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for ^dji"
+    },
+    "rut": {
+      "key": "rut",
+      "label": "Russell 2000",
+      "market": "US",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for ^rut"
+    },
+    "vix": {
+      "key": "vix",
+      "label": "VIX",
+      "market": "VOL",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for ^vix"
+    },
+    "gold": {
+      "key": "gold",
+      "label": "Gold",
+      "market": "MACRO",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for xauusd"
+    },
+    "oil": {
+      "key": "oil",
+      "label": "WTI",
+      "market": "MACRO",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for cl.f"
+    },
+    "dxy": {
+      "key": "dxy",
+      "label": "DXY",
+      "market": "MACRO",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for dx.f"
+    },
+    "usdkrw": {
+      "key": "usdkrw",
+      "label": "USD/KRW",
+      "market": "FX",
+      "source": "Stooq",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "fetch failed"
+    },
+    "btc": {
+      "key": "btc",
+      "label": "Bitcoin",
+      "market": "CRYPTO",
+      "source": "CoinGecko",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "fetch failed"
+    },
+    "kospi": {
+      "key": "kospi",
+      "label": "KOSPI",
+      "market": "KR",
+      "source": "KRX via pykrx",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "'지수명'"
+    },
+    "kosdaq": {
+      "key": "kosdaq",
+      "label": "KOSDAQ",
+      "market": "KR",
+      "source": "KRX via pykrx",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "'지수명'"
+    },
+    "t10y": {
+      "key": "t10y",
+      "label": "US 10Y",
+      "market": "MACRO",
+      "source": "FRED DGS10",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for usdkrw; HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20); HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)"
+    },
+    "t2y": {
+      "key": "t2y",
+      "label": "US 2Y",
+      "market": "MACRO",
+      "source": "FRED DGS2",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "No rows for usdkrw; HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20); HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)"
+    },
+    "hy_spread": {
+      "key": "hy_spread",
+      "label": "HY Spread",
+      "market": "MACRO",
+      "source": "FRED BAMLH0A0HYM2",
+      "price": null,
+      "previous_close": null,
+      "change": null,
+      "change_pct": null,
+      "currency": "",
+      "asof": "2026-04-02T05:28:22Z",
+      "status": "error",
+      "note": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)"
+    }
   },
-  "fear_greed": null,
-  "errors": [{"name":"bootstrap","error":"Run GitHub Actions once to populate real data."}]
+  "fear_greed": {
+    "score": 12,
+    "label": "Extreme Fear",
+    "asof": "2026-04-02T00:00:00Z",
+    "source": "alternative.me"
+  },
+  "errors": [
+    {
+      "name": "S&P 500",
+      "error": "No rows for ^spx"
+    },
+    {
+      "name": "Nasdaq 100",
+      "error": "No rows for ^ndq"
+    },
+    {
+      "name": "Dow Jones",
+      "error": "No rows for ^dji"
+    },
+    {
+      "name": "Russell 2000",
+      "error": "No rows for ^rut"
+    },
+    {
+      "name": "VIX",
+      "error": "No rows for ^vix"
+    },
+    {
+      "name": "Gold",
+      "error": "No rows for xauusd"
+    },
+    {
+      "name": "WTI",
+      "error": "No rows for cl.f"
+    },
+    {
+      "name": "DXY",
+      "error": "No rows for dx.f"
+    },
+    {
+      "name": "USDKRW",
+      "error": "No rows for usdkrw"
+    },
+    {
+      "name": "KOSPI",
+      "error": "'지수명'"
+    },
+    {
+      "name": "KOSDAQ",
+      "error": "'지수명'"
+    },
+    {
+      "name": "US 10Y",
+      "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)"
+    },
+    {
+      "name": "US 2Y",
+      "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)"
+    },
+    {
+      "name": "HY Spread",
+      "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)"
+    }
+  ]
 }
