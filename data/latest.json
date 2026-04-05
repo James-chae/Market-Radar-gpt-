@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-05T14:53:02.241489+09:00",
+  "generated_at": "2026-04-05T17:06:00.068222+09:00",
   "timezone": "Asia/Seoul",
   "mode": "snapshot",
   "repo_note": "Integrated from the user's working HTML source chain: Yahoo proxy fallbacks + Binance + alternative.me + FRED CSV + Naver fallback.",
@@ -12,7 +12,7 @@
   "fear_greed": {
     "score": 12,
     "label": "Extreme Fear",
-    "as_of": "2026-04-05T14:53:02.241470+09:00",
+    "as_of": "2026-04-05T17:06:00.068202+09:00",
     "source": "alternative.me",
     "status": "ok",
     "error": null
@@ -27,7 +27,7 @@
       "change_pct": 0.112088,
       "unit": "",
       "source": "Yahoo Finance (^GSPC)",
-      "as_of": "2026-04-05T14:51:59.928381+09:00",
+      "as_of": "2026-04-05T17:04:56.992200+09:00",
       "error": null,
       "status": "ok"
     },
@@ -40,7 +40,7 @@
       "change_pct": 0.106324,
       "unit": "",
       "source": "Yahoo Finance (^NDX)",
-      "as_of": "2026-04-05T14:51:59.989274+09:00",
+      "as_of": "2026-04-05T17:04:57.070792+09:00",
       "error": null,
       "status": "ok"
     },
@@ -53,7 +53,7 @@
       "change_pct": -0.13114,
       "unit": "",
       "source": "Yahoo Finance (^DJI)",
-      "as_of": "2026-04-05T14:52:00.118296+09:00",
+      "as_of": "2026-04-05T17:04:57.155846+09:00",
       "error": null,
       "status": "ok"
     },
@@ -66,7 +66,7 @@
       "change_pct": 0.703317,
       "unit": "",
       "source": "Yahoo Finance (^RUT)",
-      "as_of": "2026-04-05T14:52:00.201790+09:00",
+      "as_of": "2026-04-05T17:04:57.235498+09:00",
       "error": null,
       "status": "ok"
     },
@@ -79,7 +79,7 @@
       "change_pct": -2.730237,
       "unit": "",
       "source": "Yahoo Finance (^VIX)",
-      "as_of": "2026-04-05T14:52:00.261916+09:00",
+      "as_of": "2026-04-05T17:04:57.318994+09:00",
       "error": null,
       "status": "ok"
     },
@@ -92,7 +92,7 @@
       "change_pct": -1.682974,
       "unit": "USD",
       "source": "Yahoo Finance (GC=F)",
-      "as_of": "2026-04-05T14:52:00.328853+09:00",
+      "as_of": "2026-04-05T17:04:57.402803+09:00",
       "error": null,
       "status": "ok"
     },
@@ -105,7 +105,7 @@
       "change_pct": 11.925684,
       "unit": "USD",
       "source": "Yahoo Finance (CL=F)",
-      "as_of": "2026-04-05T14:52:00.396516+09:00",
+      "as_of": "2026-04-05T17:04:57.486319+09:00",
       "error": null,
       "status": "ok"
     },
@@ -118,7 +118,7 @@
       "change_pct": 0.381332,
       "unit": "",
       "source": "Yahoo Finance (DX-Y.NYB)",
-      "as_of": "2026-04-05T14:52:00.465610+09:00",
+      "as_of": "2026-04-05T17:04:57.569758+09:00",
       "error": null,
       "status": "ok"
     },
@@ -131,7 +131,7 @@
       "change_pct": 0.087467,
       "unit": "KRW",
       "source": "Yahoo Finance (KRW=X)",
-      "as_of": "2026-04-05T14:52:00.535450+09:00",
+      "as_of": "2026-04-05T17:04:57.648712+09:00",
       "error": null,
       "status": "ok"
     },
@@ -144,7 +144,7 @@
       "change_pct": 2.736886,
       "unit": "KRW",
       "source": "Yahoo Finance (^KS11)",
-      "as_of": "2026-04-05T14:52:00.604049+09:00",
+      "as_of": "2026-04-05T17:04:57.734562+09:00",
       "error": null,
       "status": "ok"
     },
@@ -157,7 +157,7 @@
       "change_pct": 0.701482,
       "unit": "KRW",
       "source": "Yahoo Finance (^KQ11)",
-      "as_of": "2026-04-05T14:52:00.671688+09:00",
+      "as_of": "2026-04-05T17:04:57.810775+09:00",
       "error": null,
       "status": "ok"
     },
@@ -170,7 +170,7 @@
       "change_pct": 4.372197,
       "unit": "KRW",
       "source": "Yahoo Finance (005930.KS)",
-      "as_of": "2026-04-05T14:52:01.499768+09:00",
+      "as_of": "2026-04-05T17:04:58.711612+09:00",
       "error": null,
       "status": "ok"
     },
@@ -183,7 +183,7 @@
       "change_pct": null,
       "unit": "USD",
       "source": "Binance",
-      "as_of": "2026-04-05T14:52:01.597393+09:00",
+      "as_of": "2026-04-05T17:04:58.861071+09:00",
       "error": "451 Client Error:  for url: https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",
       "status": "error"
     },
@@ -196,7 +196,7 @@
       "change_pct": null,
       "unit": "%",
       "source": "FRED DGS10",
-      "as_of": "2026-04-05T14:52:21.687750+09:00",
+      "as_of": "2026-04-05T17:05:19.089794+09:00",
       "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)",
       "status": "error"
     },
@@ -209,7 +209,7 @@
       "change_pct": null,
       "unit": "%",
       "source": "FRED DGS2",
-      "as_of": "2026-04-05T14:52:41.827211+09:00",
+      "as_of": "2026-04-05T17:05:39.515528+09:00",
       "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)",
       "status": "error"
     },
@@ -222,7 +222,7 @@
       "change_pct": null,
       "unit": "%",
       "source": "FRED BAMLH0A0HYM2",
-      "as_of": "2026-04-05T14:53:01.992252+09:00",
+      "as_of": "2026-04-05T17:05:59.706609+09:00",
       "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=20)",
       "status": "error"
     },
@@ -235,7 +235,7 @@
       "change_pct": null,
       "unit": "%p",
       "source": "computed from FRED",
-      "as_of": "2026-04-05T14:53:02.241485+09:00",
+      "as_of": "2026-04-05T17:06:00.068219+09:00",
       "error": "금리 데이터 없음",
       "status": "error"
     }
